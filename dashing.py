@@ -145,72 +145,114 @@ if 'previous_lmp' not in st.session_state:
   #  if st.session_state.logged_in:
    #     st.sidebar.button("Logout", on_click=logout)
 
-# ==================== SETTINGS ====================
-API_URL = "https://api.tomorrow.io/v4/weather/forecast"
-API_KEY = "ELbbfN1OHWLyHjTuQ6afA87WjgMw2r4D"  # Replace with your actual API key
-LOCATIONS = {
-    "PHR": "29.5066,-94.9927",      # Coordinates for Bacliff
-    "Wharton": "29.5066,-95.7321",  # Coordinates for Newgulf/Wharton
-    "Ector": "31.9951,-102.6157"    # Coordinates for Goldsmith
-}
-
-# ==================== WEATHER FETCH FUNCTION ====================
-def fetch_weather_tomorrow(location):
-    """
-    Fetch weather data from Tomorrow.io API for a specific location.
-    """
-    coordinates = LOCATIONS[location]
-    try:
-        response = requests.get(
-            API_URL,
-            params={
-                "location": coordinates,
-                "apikey": API_KEY,
-                "timesteps": "1d",
-                "units": "imperial"  # Fetch data in Fahrenheit
-            },
-            timeout=10
-        )
-        response.raise_for_status()
-        weather_data = response.json()
-        
-        # Extract relevant weather information
-        forecast = weather_data.get("timelines", {}).get("daily", [])[0]
-        temperature = forecast["values"]["temperatureAvg"]
-        condition_code = forecast["values"]["weatherCode"]
-        precipitation = forecast["values"].get("precipitationProbability", "N/A")
-        condition_icon = get_condition_icon(condition_code)
-
-        return {
-            "Temperature": f"{temperature} °F",
-            "Condition": condition_icon,
-            "Precipitation": f"{precipitation}%"
-        }
-    except Exception as e:
-        st.warning(f"Error fetching weather for {location}: {e}")
-        return {"Temperature": "N/A", "Condition": "N/A", "Precipitation": "N/A"}
-
-# ==================== CONDITION ICON FUNCTION (UPDATED) ====================
-def get_condition_icon(condition_code):
-    """
-    Map Tomorrow.io condition codes to icons.
-    """
-    condition_code = str(condition_code).lower()
-    if "rain" in condition_code or "drizzle" in condition_code:
+# ==================== WEATHER ICON FUNCTION ====================
+def get_condition_icon(condition):
+    condition = condition.lower()
+    if "rain" in condition or "drizzle" in condition:
         return "🌧️"
-    elif "snow" in condition_code:
+    elif "snow" in condition:
         return "❄️"
-    elif "clear" in condition_code or "sunny" in condition_code:
+    elif "clear" in condition or "sunny" in condition:
         return "☀️"
-    elif "cloud" in condition_code:
+    elif "cloud" in condition:
         return "☁️"
-    elif "storm" in condition_code or "thunder" in condition_code:
+    elif "storm" in condition or "thunder" in condition:
         return "⛈️"
-    elif "mist" in condition_code or "fog" in condition_code or "haze" in condition_code:
+    elif "mist" in condition or "fog" in condition or "haze" in condition:
         return "🌫️"
     else:
         return ""  # Default/fallback icon
 
+# ==================== WEATHER SCRAPING FUNCTIONS ====================
+def get_current_temperature_phr():
+    url = "https://www.accuweather.com/en/us/bacliff/77518/minute-weather-forecast/335968"
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, "html.parser")
+        current_temp_span = soup.find("span", class_="current-temp")
+        if current_temp_span:
+            return f"{current_temp_span.text.strip()}F"
+        return "No data"
+    except Exception as e:
+        st.warning(f"Error fetching temperature for PHR: {e}")
+        return "No data"
+
+def get_current_temperature_wharton():
+    url = "https://www.accuweather.com/en/us/boling-newgulf/77420/weather-forecast/2622286?city=boling-newgulf"
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, "html.parser")
+        temp_div = soup.find("div", class_="temp")
+        if temp_div:
+            return f"{temp_div.text.strip()}"
+        return "No data"
+    except Exception as e:
+        st.warning(f"Error fetching temperature for Wharton: {e}")
+        return "No data"
+
+def get_current_temperature_ector():
+    url = "https://www.accuweather.com/en/us/ector/75439/weather-forecast/2110081?city=ector"
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, "html.parser")
+        temp_div = soup.find("div", class_="temp")
+        if temp_div:
+            return f"{temp_div.text.strip()}"
+        return "No data"
+    except Exception as e:
+        st.warning(f"Error fetching temperature for Ector: {e}")
+        return "No data"
+
+def get_current_condition_phr():
+    url = "https://www.accuweather.com/en/us/bacliff/77518/weather-forecast/335968?city=bacliff"
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, "html.parser")
+        condition_span = soup.find("span", class_="phrase")
+        if condition_span:
+            return condition_span.text.strip()
+        return "No data"
+    except Exception as e:
+        st.warning(f"Error fetching condition for PHR: {e}")
+        return "No data"
+
+def get_current_condition_wharton():
+    url = "https://www.accuweather.com/en/us/boling-newgulf/77420/weather-forecast/2622286?city=boling-newgulf"
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, "html.parser")
+        condition_span = soup.find("span", class_="phrase")
+        if condition_span:
+            return condition_span.text.strip()
+        return "No data"
+    except Exception as e:
+        st.warning(f"Error fetching condition for Wharton: {e}")
+        return "No data"
+
+def get_current_condition_ector():
+    url = "https://www.accuweather.com/en/us/goldsmith/79741/weather-forecast/336098?city=goldsmith"
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, "html.parser")
+        condition_span = soup.find("span", class_="phrase")
+        if condition_span:
+            return condition_span.text.strip()
+        return "No data"
+    except Exception as e:
+        st.warning(f"Error fetching condition for Ector: {e}")
+        return "No data"
 
 # ==================== PRICE FETCHING FUNCTION ====================
 def fetch_price(location):
@@ -343,6 +385,7 @@ def create_trend_graph(location, price_history):
 
     return graph_path
 
+# ==================== DATA FETCHING ====================
 def fetch_and_update_data(selected_locations):
     current_time = datetime.now()
     one_hour_ago = current_time - timedelta(hours=1)
@@ -350,10 +393,19 @@ def fetch_and_update_data(selected_locations):
     data = {}
 
     for location in selected_locations:
-        # Fetch weather data using Tomorrow.io API
-        weather_data = fetch_weather_tomorrow(location)
-        temp = weather_data["Temperature"]
-        cond = weather_data["Condition"]
+        # Select appropriate functions based on location
+        if location == "PHR":
+            temp_func = get_current_temperature_phr
+            cond_func = get_current_condition_phr
+        elif location == "Wharton":
+            temp_func = get_current_temperature_wharton
+            cond_func = get_current_condition_wharton
+        elif location == "Ector":
+            temp_func = get_current_temperature_ector
+            cond_func = get_current_condition_ector
+        else:
+            st.warning(f"Unknown location: {location}")
+            continue
 
         # Fetch current price
         current_price = fetch_price(location)
@@ -403,6 +455,10 @@ def fetch_and_update_data(selected_locations):
         arrow = "↑" if percent_change > 0 else ("↓" if percent_change < 0 else "")
         color = "#00e676" if percent_change > 0 else ("#ff1744" if percent_change < 0 else "#ffffff")  # green/red/white
 
+        # Fetch temperature and condition
+        temp = temp_func()
+        cond = cond_func()
+
         # Fetch previous LMP to determine change
         previous_lmp = st.session_state.previous_lmp.get(location)
         st.session_state.previous_lmp[location] = lmp
@@ -420,17 +476,27 @@ def fetch_and_update_data(selected_locations):
                 lmp_arrow = ""
                 lmp_color = "#ffffff"  # White for no change
         else:
-            lmp_arrow = ""
+            lmp_arrow = "streamlit run main.py"
             lmp_color = "#ffffff"
 
         # Calculate Adder (Price - LMP)
         adder = current_price - lmp
+
+        # Ensure Adder is not negative
         if adder < 0:
             adder = 0.0
 
         # Determine color and arrow for Adder
-        adder_color = "#00e676" if adder > 0 else "#ffffff"
-        adder_arrow = "+" if adder > 0 else ""
+        if adder > 0:
+            adder_color = "#00e676"  # Green for positive Adder
+            adder_arrow = "+"
+        elif adder == 0:
+            adder_color = "#ffffff"  # White for no Adder
+            adder_arrow = ""
+        else:
+            # This case should not occur as adder is set to 0 if negative
+            adder_color = "#ffffff"
+            adder_arrow = ""
 
         # Create trend graph
         graph_path = create_trend_graph(location, st.session_state.price_history[location])
@@ -441,7 +507,7 @@ def fetch_and_update_data(selected_locations):
             "Change": f"{percent_change:+.2f}% {arrow}",
             "Change_Color": color,
             "Temperature": f"🌡️ {temp}",
-            "Condition": f"{cond}",
+            "Condition": f"{get_condition_icon(cond)} {cond}",
             "LMP": f"${lmp:.2f} {lmp_arrow}",
             "LMP_Color": lmp_color,
             "Adder": f"${adder:.2f} {adder_arrow}" if adder != 0 else "0.0",
@@ -450,7 +516,6 @@ def fetch_and_update_data(selected_locations):
         }
 
     return data
-
 
 # ==================== DASHBOARD ====================
 def dashboard():
